@@ -1,6 +1,7 @@
 package img
 
 import (
+	"fmt"
 	"image"
 	_ "image/gif"
 	_ "image/png"
@@ -21,24 +22,25 @@ type Metadata struct {
 type Image struct {
 	Id       int  `json:"id"`
 	Data     string  `json:"data,omitempty"`
-	Metadata Metadata  `json:"metadata"`
+	Metadata Metadata  `json:"metadata,omitempty"`
 }
 
 func GenerateImageData(data []byte) (*Image, error) {
 	reader := base64.NewDecoder(base64.StdEncoding, strings.NewReader(string(data)))
-	imageObj, _, err := image.Decode(reader)
+	
+	imageObj, format, err := image.Decode(reader)
 	if (err != nil) {
 		// Return specific error for 422?
 		return nil, err
 	}
-	imageRect := imageObj.Bounds()
+	bounds := imageObj.Bounds()
 	imageMetadata := Metadata{
-		Size: cap(data),
-		Width: imageRect.Max.X - imageRect.Min.X,
-		Height: imageRect.Max.Y - imageRect.Min.Y,
-		Format: "jpg!?",
+		Width: bounds.Dx(),
+		Height: bounds.Dy(),
+		Format: format,
 		Created_at: time.Now().String(),
 	}
+	imageMetadata.Size = imageMetadata.Width * imageMetadata.Height * 4 / 1024
 
 	_image := Image{
 		Data: string(data),
@@ -46,4 +48,9 @@ func GenerateImageData(data []byte) (*Image, error) {
 	}
 
 	return &_image, nil
+}
+
+func GetImageCutout(img *Image) (*Image, error) {
+	fmt.Println("Getting cutout")
+	return &Image{}, nil
 }

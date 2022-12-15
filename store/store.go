@@ -1,4 +1,4 @@
-package db
+package store
 
 import (
 	"database/sql"
@@ -15,7 +15,7 @@ type ImageStore interface {
 	UpdateImage(id int, data []byte) (img.Image, error)
 	GetImages() ([]img.Image, error)
 	GetImage(id int) (img.Image, error)
-	GetImageData(id int) (img.Image, error)
+	GetImageData(id int, _data *[]byte) (error)
 }
 
 type ImageDatabase struct {
@@ -58,6 +58,11 @@ func (store *ImageDatabase) CreateImage(data []byte) (img.Image, error) {
 
 	_image, err := img.GenerateImageData(data)
 
+	if (err != nil) {
+		// Return 422?
+		return img.Image{}, err
+	}
+
 	queryString := `INSERT INTO images (data, metadata) VALUES ($1, $2) RETURNING id`
 	metaJson, _ := json.Marshal(_image.Metadata)
 
@@ -79,6 +84,11 @@ func (store *ImageDatabase) UpdateImage(id int, data []byte) (img.Image, error) 
 
 	_image, err := img.GenerateImageData(data)
 
+	if (err != nil) {
+		// Return 422?
+		return img.Image{}, err
+	}
+
 	queryString := `UPDATE images SET data = $1, metadata = $2 WHERE id = $3`
 	metaJson, _ := json.Marshal(_image.Metadata)
 	_, err = store.db.Exec(queryString, _image.Data, metaJson, id)
@@ -92,8 +102,6 @@ func (store *ImageDatabase) UpdateImage(id int, data []byte) (img.Image, error) 
 		Id: int(id),
 		Metadata: _image.Metadata,
 	}, nil
-
-	return img.Image{}, nil
 }
 func (store *ImageDatabase) GetImages() ([]img.Image, error) {
 	rows, _ := store.db.Query(`SELECT "id", "metadata" FROM "images"`)
@@ -124,12 +132,33 @@ func (store *ImageDatabase) GetImages() ([]img.Image, error) {
 }
 
 func (store *ImageDatabase) GetImage(id int) (img.Image, error) {
-	return img.Image{}, nil
+	rows, _ := store.db.Query(`SELECT "metadata" FROM "images" WHERE "id" = $1`, id)
+	defer rows.Close()
 
+	var metaString string
+	rows.Next()
+	err := rows.Scan(&metaString)
+	meta := img.Metadata{}
+	json.Unmarshal([]byte(metaString), &meta)
+
+	if err != nil {
+		panic(err)
+	}
+
+	image := img.Image{
+		Id: id,
+		Metadata: meta,
+	}	
+
+	return image, nil
 }
-func (store *ImageDatabase) GetImageData(id int) (img.Image, error) {
-	return img.Image{}, nil
+func (store *ImageDatabase) GetImageData(id int, _data *[]byte) (error) {
+	rows, _ := store.db.Query(`SELECT "data" FROM "images" WHERE "id" = $1`, id)
+	defer rows.Close()
 
+	rows.Next()
+	err := rows.Scan(_data)
+	return err
 }
 
 func createTable(db *sql.DB) error {

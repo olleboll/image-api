@@ -6,9 +6,11 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
+	"strconv"
 
 	"github.com/joho/godotenv"
-	"github.com/olleboll/images/db"
+	"github.com/olleboll/images/store"
 	"github.com/olleboll/images/img"
 )
 
@@ -41,7 +43,7 @@ func main() {
 		Update image. Request body should be image data.
 	*/
 
-	imageStore, err := db.Connect()
+	imageStore, err := store.Connect()
 
 	if err != nil {
 		log.Fatal("Could not connect to db")
@@ -50,34 +52,94 @@ func main() {
 
 	images := func(w http.ResponseWriter, req *http.Request) {
 
+		// split the path
+		path := strings.Split(req.URL.Path, "/")[3:]
+		var imageId int
+		if (len(path) > 0) {
+			imageId, err = strconv.Atoi(path[0])
+			if (err != nil) {
+				// id params missing or not a valid id
+			}
+		}
+
 		var responseData []byte
-		fmt.Println("GOT REQUEST")
-		if req.Method == "POST" {
-			fmt.Println("POSTING")
-			imageData, err := io.ReadAll(req.Body)
-			meta, err := imageStore.CreateImage(imageData)
 
-			if err != nil {
+		switch {
+			case len(path) == 0 && req.Method == "GET":
 
-			}
-			responseData, _ = json.Marshal(meta)
-			w.Header().Set("Content-Type", "application/json")
+				var images []img.Image
+				images, err = imageStore.GetImages()
+	
+				if err != nil {
+					// Return some error
+					fmt.Println("ERROR")
+				}
+				responseData, _ = json.Marshal(images)
+				w.Header().Set("Content-Type", "application/json")
+				
+			case len(path) == 0 && req.Method == "POST":
 
-		} else if req.Method == "GET" {
-			var images []img.Image
-			images, err = imageStore.GetImages()
+				fmt.Println("POSTING")
+				imageData, err := io.ReadAll(req.Body)
+				meta, err := imageStore.CreateImage(imageData)
+	
+				if err != nil {
+	
+				}
+				responseData, _ = json.Marshal(meta)
+				w.Header().Set("Content-Type", "application/json")
 
-			if err != nil {
-				// Return some error
-				fmt.Println("ERROR")
-			}
-			responseData, _ = json.Marshal(images)
-			w.Header().Set("Content-Type", "application/json")
+			case len(path) == 1 && req.Method == "GET":
+				var image img.Image
+				image, err = imageStore.GetImage(imageId)
+	
+				if err != nil {
+					// Return some error
+					fmt.Println("ERROR")
+				}
+				responseData, _ = json.Marshal(image)
+				w.Header().Set("Content-Type", "application/json")
+				
+
+			case len(path) == 1 && req.Method == "PUT":
+
+				fmt.Println("POSTING")
+				imageData, err := io.ReadAll(req.Body)
+
+				if err != nil {
+					// invalid body error
+				}
+
+				meta, err := imageStore.UpdateImage(imageId, imageData)
+
+				if err != nil {
+					// Failed to save to db
+				}
+
+				responseData, _ = json.Marshal(meta)
+				w.Header().Set("Content-Type", "application/json")
+				
+
+			case len(path) == 2 && req.Method == "GET" && path[1] == "data":
+				// Get query params for cropping
+
+				var imageData []byte
+				err = imageStore.GetImageData(imageId, &imageData)
+	
+				if err != nil {
+					// Return some error
+					fmt.Println("ERROR")
+				}
+				responseData = imageData
+				w.Header().Set("Content-Type", "text/base64")
+			default:
+				http.NotFound(w, req)
+				return
 		}
 		w.Write(responseData)
 	}
 
-	http.HandleFunc("/v1/images", images)
+	http.HandleFunc("/v1/images/", images)
 	log.Println("Listing for requests at http://localhost:8000/hello")
 	log.Fatal(http.ListenAndServe(":8000", nil))
 }
