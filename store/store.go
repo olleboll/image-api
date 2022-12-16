@@ -135,7 +135,7 @@ func (store *ImageDatabase) GetImage(id int) (img.Image, error) {
 	json.Unmarshal([]byte(metaString), &meta)
 
 	if err != nil {
-		panic(err)
+		return img.Image{}, err
 	}
 
 	image := img.Image{

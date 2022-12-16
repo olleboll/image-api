@@ -83,7 +83,7 @@ func main() {
 		}
 
 		if err != nil {
-			returnError(w, 500)
+			returnError(w, 404)
 			return
 		}
 		w.Header().Set("Content-Type", "text/base64")
