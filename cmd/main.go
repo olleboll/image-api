@@ -5,8 +5,10 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/julienschmidt/httprouter"
@@ -16,12 +18,18 @@ import (
 
 func main() {
 
+	// Dirty shortcut to make the database ready for connections
+
 	/*
 		make all err checks "one liners"
 
 	*/
 
 	godotenv.Load()
+
+	if os.Getenv("SLOW_START") == "true" {
+		time.Sleep(2 * time.Second)
+	}
 
 	imageStore, err := store.Connect()
 

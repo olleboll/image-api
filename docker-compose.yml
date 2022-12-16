@@ -7,6 +7,7 @@ services:
       - RDS_HOST=db_postgres
       - RDS_USER=${RDS_USER}
       - RDS_PASSWORD=${RDS_PASSWORD}
+      - SLOW_START=true
     ports:
       - 8000:8000
   db_postgres:
