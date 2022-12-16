@@ -1,5 +1,14 @@
 version: "3"
 services:
+  api:
+    image: image-api
+    command: "./main"
+    environment:
+      - RDS_HOST=db_postgres
+      - RDS_USER=${RDS_USER}
+      - RDS_PASSWORD=${RDS_PASSWORD}
+    ports:
+      - 8000:8000
   db_postgres:
     image: postgres:latest
     environment:
