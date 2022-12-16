@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -61,6 +62,7 @@ func main() {
 		}
 		responseData, _ = json.Marshal(images)
 		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
 		w.Write(responseData)
 	}
 
@@ -81,10 +83,12 @@ func main() {
 		}
 		responseData, _ = json.Marshal(image)
 		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
 		w.Write(responseData)
 	}
 
 	getImageData := func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		fmt.Println("HALLÅ!?!?")
 		var imageData []byte
 
 		// Get query params for cropping
@@ -115,8 +119,8 @@ func main() {
 			returnError(w, 500)
 			return
 		}
-		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "text/base64")
+		w.WriteHeader(http.StatusOK)
 		w.Write(imageData)
 	}
 
@@ -136,8 +140,8 @@ func main() {
 			return
 		}
 		responseData, _ = json.Marshal(meta)
-		w.WriteHeader(http.StatusCreated)
 		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
 		w.Write(responseData)
 	}
 
@@ -165,8 +169,8 @@ func main() {
 		}
 
 		responseData, _ = json.Marshal(meta)
-		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
 		w.Write(responseData)
 	}
 
