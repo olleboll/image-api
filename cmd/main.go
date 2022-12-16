@@ -25,7 +25,6 @@ func main() {
 	}
 
 	getImages := func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		var responseData []byte
 		var images []img.Image
 		images, err = imageStore.GetImages()
 
@@ -33,14 +32,13 @@ func main() {
 			returnError(w, 500)
 			return
 		}
-		responseData, _ = json.Marshal(images)
+		responseData, _ := json.Marshal(images)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write(responseData)
 	}
 
 	getImage := func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		var responseData []byte
 		var image img.Image
 
 		imageId, err := strconv.Atoi(ps.ByName("imageId"))
@@ -54,7 +52,7 @@ func main() {
 			returnError(w, 404)
 			return
 		}
-		responseData, _ = json.Marshal(image)
+		responseData, _ := json.Marshal(image)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write(responseData)
@@ -94,7 +92,6 @@ func main() {
 	}
 
 	createImage := func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		var responseData []byte
 		imageData, err := io.ReadAll(r.Body)
 
 		if err != nil {
@@ -108,14 +105,13 @@ func main() {
 			returnError(w, 400)
 			return
 		}
-		responseData, _ = json.Marshal(meta)
+		responseData, _ := json.Marshal(meta)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		w.Write(responseData)
 	}
 
 	updateImage := func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		var responseData []byte
 		imageData, err := io.ReadAll(r.Body)
 
 		if err != nil {
@@ -137,7 +133,7 @@ func main() {
 			return
 		}
 
-		responseData, _ = json.Marshal(meta)
+		responseData, _ := json.Marshal(meta)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write(responseData)
