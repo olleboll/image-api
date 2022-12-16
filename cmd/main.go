@@ -6,10 +6,11 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"strings"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
+	"github.com/julienschmidt/httprouter"
 	"github.com/olleboll/images/store"
 	"github.com/olleboll/images/img"
 )
@@ -50,100 +51,118 @@ func main() {
 		return
 	}
 
-	images := func(w http.ResponseWriter, req *http.Request) {
 
-		// split the path
-		path := strings.Split(req.URL.Path, "/")[3:]
-		var imageId int
-		if (len(path) > 0) {
-			imageId, err = strconv.Atoi(path[0])
-			if (err != nil) {
-				// id params missing or not a valid id
-			}
-		}
-
+	getImages := func(w http.ResponseWriter, r *http.Request, ps httprouter.Params){
 		var responseData []byte
+		var images []img.Image
+		images, err = imageStore.GetImages()
 
-		switch {
-			case len(path) == 0 && req.Method == "GET":
-
-				var images []img.Image
-				images, err = imageStore.GetImages()
-	
-				if err != nil {
-					// Return some error
-					fmt.Println("ERROR")
-				}
-				responseData, _ = json.Marshal(images)
-				w.Header().Set("Content-Type", "application/json")
-				
-			case len(path) == 0 && req.Method == "POST":
-
-				fmt.Println("POSTING")
-				imageData, err := io.ReadAll(req.Body)
-				meta, err := imageStore.CreateImage(imageData)
-	
-				if err != nil {
-	
-				}
-				responseData, _ = json.Marshal(meta)
-				w.Header().Set("Content-Type", "application/json")
-
-			case len(path) == 1 && req.Method == "GET":
-				var image img.Image
-				image, err = imageStore.GetImage(imageId)
-	
-				if err != nil {
-					// Return some error
-					fmt.Println("ERROR")
-				}
-				responseData, _ = json.Marshal(image)
-				w.Header().Set("Content-Type", "application/json")
-				
-
-			case len(path) == 1 && req.Method == "PUT":
-
-				fmt.Println("POSTING")
-				imageData, err := io.ReadAll(req.Body)
-
-				if err != nil {
-					// invalid body error
-				}
-
-				meta, err := imageStore.UpdateImage(imageId, imageData)
-
-				if err != nil {
-					// Failed to save to db
-				}
-
-				responseData, _ = json.Marshal(meta)
-				w.Header().Set("Content-Type", "application/json")
-				
-
-			case len(path) == 2 && req.Method == "GET" && path[1] == "data":
-				// Get query params for cropping
-
-				var imageData []byte
-				err = imageStore.GetImageData(imageId, &imageData)
-	
-				if err != nil {
-					// Return some error
-					fmt.Println("ERROR")
-				}
-				responseData = imageData
-				w.Header().Set("Content-Type", "text/base64")
-			default:
-				http.NotFound(w, req)
-				return
+		if err != nil {
+			// Return some error
+			fmt.Println("ERROR")
 		}
+		responseData, _ = json.Marshal(images)
+		w.Header().Set("Content-Type", "application/json")
 		w.Write(responseData)
 	}
 
-	http.HandleFunc("/v1/images/", images)
-	log.Println("Listing for requests at http://localhost:8000/hello")
-	log.Fatal(http.ListenAndServe(":8000", nil))
-}
 
-func returnResponse(w http.ResponseWriter, status int, response string){
+	getImage := func(w http.ResponseWriter, r *http.Request, ps httprouter.Params){
+		var responseData []byte
+		var image img.Image
 
+		imageId, err := strconv.Atoi(ps.ByName("imageId"))
+		image, err = imageStore.GetImage(imageId)
+
+		if err != nil {
+			// Return some error
+			fmt.Println("ERROR")
+		}
+		responseData, _ = json.Marshal(image)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(responseData)
+	}
+
+
+	getImageData := func(w http.ResponseWriter, r *http.Request, ps httprouter.Params){
+		var imageData []byte
+
+		// Get query params for cropping
+		imageId, err := strconv.Atoi(ps.ByName("imageId"))
+
+		// Get the image data
+		// bbox=<x>,<y>,<w>,<h>
+		
+		queryValues := r.URL.Query()
+		_bbox := queryValues.Get("bbox")
+		if (len(_bbox)>0) {
+			bbox := strings.Split(_bbox, ",")
+			cutout := img.Cutout{}
+			cutout.X, _ = strconv.Atoi(bbox[0])
+			cutout.Y, _ = strconv.Atoi(bbox[1])
+			cutout.W, _ = strconv.Atoi(bbox[2])
+			cutout.H, _ = strconv.Atoi(bbox[3])
+			err = imageStore.GetImageData(imageId, &imageData, &cutout)
+		} else {
+			err = imageStore.GetImageData(imageId, &imageData, nil)
+		}
+
+
+		if err != nil {
+			// Return some error
+			fmt.Println("ERROR")
+		}
+		w.Header().Set("Content-Type", "text/base64")
+		w.Write(imageData)
+	}
+
+
+	createImage := func(w http.ResponseWriter, r *http.Request, ps httprouter.Params){
+		var responseData []byte
+		imageData, err := io.ReadAll(r.Body)
+		meta, err := imageStore.CreateImage(&imageData)
+
+		if err != nil {
+
+		}
+		responseData, _ = json.Marshal(meta)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(responseData)
+	}
+
+
+	updateImage := func(w http.ResponseWriter, r *http.Request, ps httprouter.Params){
+		var responseData []byte
+		imageData, err := io.ReadAll(r.Body)
+
+		if err != nil {
+			// invalid body error
+		}
+		imageId, err := strconv.Atoi(ps.ByName("imageId"))
+		if err != nil {
+			// invalid id error
+		}
+
+		meta, err := imageStore.UpdateImage(imageId, &imageData)
+
+		if err != nil {
+			// Failed to save to db
+		}
+
+		responseData, _ = json.Marshal(meta)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(responseData)
+	}
+
+	router := httprouter.New()
+
+    router.GET("/v1/images", getImages)
+	router.POST("/v1/images", createImage)
+    router.GET("/v1/images/:imageId", getImage)
+	router.PUT("/v1/images/:imageId", updateImage)
+    router.GET("/v1/images/:imageId/data", getImageData)
+
+	log.Println("Listing for requests at http://localhost:8000/v1/images")
+
+    log.Fatal(http.ListenAndServe(":8000", router))
 }
