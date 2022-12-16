@@ -1,11 +1,12 @@
 package store
 
 import (
+	_ "bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
-	_ "bytes"
+
 	_ "github.com/lib/pq"
 	"github.com/olleboll/images/img"
 )
@@ -15,7 +16,7 @@ type ImageStore interface {
 	UpdateImage(id int, data *[]byte) (img.Image, error)
 	GetImages() ([]img.Image, error)
 	GetImage(id int) (img.Image, error)
-	GetImageData(id int, _data *[]byte, cutout *img.Cutout) (error)
+	GetImageData(id int, _data *[]byte, cutout *img.Cutout) error
 }
 
 type ImageDatabase struct {
@@ -36,8 +37,6 @@ func Connect() (ImageStore, error) {
 	db, _ := sql.Open("postgres", connStr)
 	err := db.Ping()
 	if err != nil {
-		fmt.Println("Error when connecting to db")
-		fmt.Println(fmt.Errorf(err.Error()))
 		return nil, err
 	}
 	fmt.Println("ConnectedToDb")
@@ -46,8 +45,6 @@ func Connect() (ImageStore, error) {
 	err = createTable(db)
 
 	if err != nil {
-		fmt.Println("Error when creating table")
-		fmt.Println(fmt.Errorf(err.Error()))
 		return nil, err
 	}
 
@@ -58,8 +55,7 @@ func (store *ImageDatabase) CreateImage(data *[]byte) (img.Image, error) {
 
 	_image, err := img.GenerateImageData(data)
 
-	if (err != nil) {
-		// Return 422?
+	if err != nil {
 		return img.Image{}, err
 	}
 
@@ -69,13 +65,12 @@ func (store *ImageDatabase) CreateImage(data *[]byte) (img.Image, error) {
 	var id int
 	err = store.db.QueryRow(queryString, _image.Data, metaJson).Scan(&id)
 
-	if (err != nil) {
-		// Databse error.. Return 500?
+	if err != nil {
 		return img.Image{}, err
 	}
-	
+
 	return img.Image{
-		Id: int(id),
+		Id:       int(id),
 		Metadata: _image.Metadata,
 	}, nil
 }
@@ -84,8 +79,7 @@ func (store *ImageDatabase) UpdateImage(id int, data *[]byte) (img.Image, error)
 
 	_image, err := img.GenerateImageData(data)
 
-	if (err != nil) {
-		// Return 422?
+	if err != nil {
 		return img.Image{}, err
 	}
 
@@ -93,13 +87,12 @@ func (store *ImageDatabase) UpdateImage(id int, data *[]byte) (img.Image, error)
 	metaJson, _ := json.Marshal(_image.Metadata)
 	_, err = store.db.Exec(queryString, _image.Data, metaJson, id)
 
-	if (err != nil) {
-		// Databse error.. Return 500?
+	if err != nil {
 		return img.Image{}, err
 	}
-	
+
 	return img.Image{
-		Id: int(id),
+		Id:       int(id),
 		Metadata: _image.Metadata,
 	}, nil
 }
@@ -121,7 +114,7 @@ func (store *ImageDatabase) GetImages() ([]img.Image, error) {
 		}
 
 		imageMeta := img.Image{
-			Id: id,
+			Id:       id,
 			Metadata: meta,
 		}
 
@@ -146,20 +139,20 @@ func (store *ImageDatabase) GetImage(id int) (img.Image, error) {
 	}
 
 	image := img.Image{
-		Id: id,
+		Id:       id,
 		Metadata: meta,
-	}	
+	}
 
 	return image, nil
 }
-func (store *ImageDatabase) GetImageData(id int, _data *[]byte, cutout *img.Cutout) (error) {
+func (store *ImageDatabase) GetImageData(id int, _data *[]byte, cutout *img.Cutout) error {
 	rows, _ := store.db.Query(`SELECT "data" FROM "images" WHERE "id" = $1`, id)
 	defer rows.Close()
 
 	rows.Next()
 	err := rows.Scan(_data)
 
-	if (cutout != nil) {
+	if cutout != nil {
 		*_data, err = img.GetImageCutout(_data, *cutout)
 	}
 
