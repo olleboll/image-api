@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -17,32 +16,6 @@ import (
 
 func main() {
 	godotenv.Load()
-	/*
-
-		// Define the endpoints
-		​
-		`GET /v1/images`
-		​
-		List metadata for stored images.
-		​
-		`GET /v1/images/<id>`
-		​
-		Get metadata for image with id `<id>`.
-		​
-		`GET /v1/images/<id>/data`
-		​
-		Get image data for image with id `<id>`.
-		​
-		Optional GET parameter: `?bbox=<x>,<y>,<w>,<h>` to get a cutout of the image.
-		​
-		`POST /v1/images`
-		​
-		Upload new image. Request body should be image data.
-		​
-		`PUT /v1/images/<id>`
-		​
-		Update image. Request body should be image data.
-	*/
 
 	imageStore, err := store.Connect()
 
@@ -88,19 +61,15 @@ func main() {
 	}
 
 	getImageData := func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		fmt.Println("HALLÅ!?!?")
 		var imageData []byte
 
-		// Get query params for cropping
 		imageId, err := strconv.Atoi(ps.ByName("imageId"))
 		if err != nil {
 			returnError(w, 400)
 			return
 		}
 
-		// Get the image data
-		// bbox=<x>,<y>,<w>,<h>
-
+		// Get query params for cropping
 		queryValues := r.URL.Query()
 		_bbox := queryValues.Get("bbox")
 		if len(_bbox) > 0 {
