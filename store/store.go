@@ -14,8 +14,8 @@ import (
 type ImageStore interface {
 	CreateImage(data *[]byte) (img.Image, error)
 	UpdateImage(id int, data *[]byte) (img.Image, error)
-	GetImages() ([]img.Image, error)
-	GetImage(id int) (img.Image, error)
+	GetImagesMetadata() ([]img.Image, error)
+	GetImageMetadata(id int) (img.Image, error)
 	GetImageData(id int, _data *[]byte, cutout *img.Cutout) error
 }
 
@@ -35,16 +35,12 @@ func Connect() (ImageStore, error) {
 	connStr := fmt.Sprintf("postgresql://%s:%s@%s/%s?sslmode=disable", RDS_USER, RDS_PASSWORD, RDS_HOST, RDS_DATABASE)
 	// Connect to database
 	db, _ := sql.Open("postgres", connStr)
-	err := db.Ping()
-	if err != nil {
+	if err := db.Ping(); err != nil {
 		return nil, err
 	}
 	fmt.Println("ConnectedToDb")
 
-	// Check if things exist
-	err = createTable(db)
-
-	if err != nil {
+	if err := createTable(db); err != nil {
 		return nil, err
 	}
 
@@ -53,39 +49,37 @@ func Connect() (ImageStore, error) {
 
 func (store *ImageDatabase) CreateImage(data *[]byte) (img.Image, error) {
 
-	_image, err := img.GenerateImageData(data)
+	image, err := img.AnalyzeImageData(data)
 
 	if err != nil {
 		return img.Image{}, err
 	}
 
 	queryString := `INSERT INTO images (data, metadata) VALUES ($1, $2) RETURNING id`
-	metaJson, _ := json.Marshal(_image.Metadata)
+	metaJson, _ := json.Marshal(image.Metadata)
 
 	var id int
-	err = store.db.QueryRow(queryString, _image.Data, metaJson).Scan(&id)
-
-	if err != nil {
+	if err := store.db.QueryRow(queryString, image.Data, metaJson).Scan(&id); err != nil {
 		return img.Image{}, err
 	}
 
 	return img.Image{
 		Id:       int(id),
-		Metadata: _image.Metadata,
+		Metadata: image.Metadata,
 	}, nil
 }
 
 func (store *ImageDatabase) UpdateImage(id int, data *[]byte) (img.Image, error) {
 
-	_image, err := img.GenerateImageData(data)
+	image, err := img.AnalyzeImageData(data)
 
 	if err != nil {
 		return img.Image{}, err
 	}
 
 	queryString := `UPDATE images SET data = $1, metadata = $2 WHERE id = $3`
-	metaJson, _ := json.Marshal(_image.Metadata)
-	_, err = store.db.Exec(queryString, _image.Data, metaJson, id)
+	metaJson, _ := json.Marshal(image.Metadata)
+	_, err = store.db.Exec(queryString, image.Data, metaJson, id)
 
 	if err != nil {
 		return img.Image{}, err
@@ -93,10 +87,10 @@ func (store *ImageDatabase) UpdateImage(id int, data *[]byte) (img.Image, error)
 
 	return img.Image{
 		Id:       int(id),
-		Metadata: _image.Metadata,
+		Metadata: image.Metadata,
 	}, nil
 }
-func (store *ImageDatabase) GetImages() ([]img.Image, error) {
+func (store *ImageDatabase) GetImagesMetadata() ([]img.Image, error) {
 	rows, _ := store.db.Query(`SELECT "id", "metadata" FROM "images"`)
 	defer rows.Close()
 
@@ -105,13 +99,11 @@ func (store *ImageDatabase) GetImages() ([]img.Image, error) {
 	for rows.Next() {
 		var id int
 		var metaString string
-		err := rows.Scan(&id, &metaString)
-		meta := img.Metadata{}
-		json.Unmarshal([]byte(metaString), &meta)
-
-		if err != nil {
+		if err := rows.Scan(&id, &metaString); err != nil {
 			panic(err)
 		}
+		meta := img.Metadata{}
+		json.Unmarshal([]byte(metaString), &meta)
 
 		imageMeta := img.Image{
 			Id:       id,
@@ -124,19 +116,17 @@ func (store *ImageDatabase) GetImages() ([]img.Image, error) {
 	return results, nil
 }
 
-func (store *ImageDatabase) GetImage(id int) (img.Image, error) {
+func (store *ImageDatabase) GetImageMetadata(id int) (img.Image, error) {
 	rows, _ := store.db.Query(`SELECT "metadata" FROM "images" WHERE "id" = $1`, id)
 	defer rows.Close()
 
 	var metaString string
 	rows.Next()
-	err := rows.Scan(&metaString)
+	if err := rows.Scan(&metaString); err != nil {
+		panic(err)
+	}
 	meta := img.Metadata{}
 	json.Unmarshal([]byte(metaString), &meta)
-
-	if err != nil {
-		return img.Image{}, err
-	}
 
 	image := img.Image{
 		Id:       id,
@@ -145,15 +135,15 @@ func (store *ImageDatabase) GetImage(id int) (img.Image, error) {
 
 	return image, nil
 }
-func (store *ImageDatabase) GetImageData(id int, _data *[]byte, cutout *img.Cutout) error {
+func (store *ImageDatabase) GetImageData(id int, byteData *[]byte, cutout *img.Cutout) error {
 	rows, _ := store.db.Query(`SELECT "data" FROM "images" WHERE "id" = $1`, id)
 	defer rows.Close()
 
 	rows.Next()
-	err := rows.Scan(_data)
+	err := rows.Scan(byteData)
 
 	if cutout != nil {
-		*_data, err = img.GetImageCutout(_data, *cutout)
+		*byteData, err = img.GetImageCutout(byteData, *cutout)
 	}
 
 	return err

@@ -15,6 +15,12 @@ import (
 )
 
 func main() {
+
+	/*
+		make all err checks "one liners"
+
+	*/
+
 	godotenv.Load()
 
 	imageStore, err := store.Connect()
@@ -24,9 +30,9 @@ func main() {
 		return
 	}
 
-	getImages := func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	getImagesMetadata := func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		var images []img.Image
-		images, err = imageStore.GetImages()
+		images, err = imageStore.GetImagesMetadata()
 
 		if err != nil {
 			returnError(w, 500)
@@ -38,7 +44,7 @@ func main() {
 		w.Write(responseData)
 	}
 
-	getImage := func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	getImageMetadata := func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		var image img.Image
 
 		imageId, err := strconv.Atoi(ps.ByName("imageId"))
@@ -46,7 +52,7 @@ func main() {
 			returnError(w, 400)
 			return
 		}
-		image, err = imageStore.GetImage(imageId)
+		image, err = imageStore.GetImageMetadata(imageId)
 
 		if err != nil {
 			returnError(w, 404)
@@ -70,19 +76,18 @@ func main() {
 		// Get query params for cropping
 		queryValues := r.URL.Query()
 		_bbox := queryValues.Get("bbox")
+
+		var cutout *img.Cutout
+
 		if len(_bbox) > 0 {
 			bbox := strings.Split(_bbox, ",")
-			cutout := img.Cutout{}
 			cutout.X, _ = strconv.Atoi(bbox[0])
 			cutout.Y, _ = strconv.Atoi(bbox[1])
 			cutout.W, _ = strconv.Atoi(bbox[2])
 			cutout.H, _ = strconv.Atoi(bbox[3])
-			err = imageStore.GetImageData(imageId, &imageData, &cutout)
-		} else {
-			err = imageStore.GetImageData(imageId, &imageData, nil)
 		}
 
-		if err != nil {
+		if err := imageStore.GetImageData(imageId, &imageData, cutout); err != nil {
 			returnError(w, 404)
 			return
 		}
@@ -141,9 +146,9 @@ func main() {
 
 	router := httprouter.New()
 
-	router.GET("/v1/images", getImages)
+	router.GET("/v1/images", getImagesMetadata)
 	router.POST("/v1/images", createImage)
-	router.GET("/v1/images/:imageId", getImage)
+	router.GET("/v1/images/:imageId", getImageMetadata)
 	router.PUT("/v1/images/:imageId", updateImage)
 	router.GET("/v1/images/:imageId/data", getImageData)
 

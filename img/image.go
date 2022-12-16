@@ -32,9 +32,9 @@ type Cutout struct {
 	H int
 }
 
-func GenerateImageData(data *[]byte) (*Image, error) {
+func AnalyzeImageData(data *[]byte) (*Image, error) {
 	// Create image.Image instace
-	imageObj, format, err := getImageData(data)
+	imageObj, format, err := decodeImageData(data)
 	if err != nil {
 		return nil, err
 	}
@@ -42,28 +42,25 @@ func GenerateImageData(data *[]byte) (*Image, error) {
 	// Populate metadata
 	bounds := imageObj.Bounds()
 	imageMetadata := Metadata{
+		Size:       len(*data) / 1024,
 		Width:      bounds.Dx(),
 		Height:     bounds.Dy(),
 		Format:     format,
 		Created_at: time.Now().String(),
 	}
-	imageMetadata.Size = imageMetadata.Width * imageMetadata.Height * 4 / 1024
 
-	// Create Image struct
-	_image := Image{
+	return &Image{
 		Data:     string(*data),
 		Metadata: imageMetadata,
-	}
-
-	return &_image, nil
+	}, nil
 }
 
 func GetImageCutout(data *[]byte, cutout Cutout) ([]byte, error) {
 	// Get original image data
-	_image, format, err := getImageData(data)
+	originalImage, format, err := decodeImageData(data)
 
 	// Create subimage
-	imageObj := _image.(interface {
+	imageObj := originalImage.(interface {
 		SubImage(r image.Rectangle) image.Image
 	}).SubImage(image.Rect(cutout.X, cutout.Y, cutout.W, cutout.H))
 
@@ -82,7 +79,7 @@ func GetImageCutout(data *[]byte, cutout Cutout) ([]byte, error) {
 
 }
 
-func getImageData(data *[]byte) (image.Image, string, error) {
+func decodeImageData(data *[]byte) (image.Image, string, error) {
 	reader := base64.NewDecoder(base64.StdEncoding, strings.NewReader(string(*data)))
 	return image.Decode(reader)
 }
