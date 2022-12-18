@@ -59,6 +59,10 @@ func GetImageCutout(data *[]byte, cutout Cutout) ([]byte, error) {
 	// Get original image data
 	originalImage, format, err := decodeImageData(data)
 
+	if err != nil {
+		return []byte{}, err
+	}
+
 	// Create subimage
 	imageObj := originalImage.(interface {
 		SubImage(r image.Rectangle) image.Image
