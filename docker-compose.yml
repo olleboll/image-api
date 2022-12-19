@@ -15,6 +15,5 @@ services:
     environment:
       - POSTGRES_USER=${RDS_USER}
       - POSTGRES_PASSWORD=${RDS_PASSWORD}
-      - POSTGRES_DB=${RDS_DBNAME}
     ports:
       - 5432:5432

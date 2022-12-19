@@ -30,9 +30,8 @@ func Connect() (ImageStore, error) {
 	var RDS_HOST string = os.Getenv("RDS_HOST")
 	var RDS_USER string = os.Getenv("RDS_USER")
 	var RDS_PASSWORD string = os.Getenv("RDS_PASSWORD")
-	var RDS_DATABASE string = os.Getenv("RDS_DATABASE")
 
-	connStr := fmt.Sprintf("postgresql://%s:%s@%s/%s?sslmode=disable", RDS_USER, RDS_PASSWORD, RDS_HOST, RDS_DATABASE)
+	connStr := fmt.Sprintf("postgresql://%s:%s@%s?sslmode=disable", RDS_USER, RDS_PASSWORD, RDS_HOST)
 	// Connect to database
 	db, _ := sql.Open("postgres", connStr)
 	if err := db.Ping(); err != nil {
