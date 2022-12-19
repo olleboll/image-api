@@ -60,12 +60,13 @@ func Run(imageStore store.ImageStore) {
 
 		// Get query params for cropping
 		queryValues := r.URL.Query()
-		_bbox := queryValues.Get("bbox")
+		bbox := queryValues.Get("bbox")
 
 		var cutout *img.Cutout
 
-		if len(_bbox) > 0 {
-			bbox := strings.Split(_bbox, ",")
+		if len(bbox) > 0 {
+			bbox := strings.Split(bbox, ",")
+			cutout = &img.Cutout{}
 			cutout.X, _ = strconv.Atoi(bbox[0])
 			cutout.Y, _ = strconv.Atoi(bbox[1])
 			cutout.W, _ = strconv.Atoi(bbox[2])
