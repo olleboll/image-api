@@ -20,7 +20,7 @@ func Run(imageStore store.ImageStore) {
 		images, err := imageStore.GetImagesMetadata()
 
 		if err != nil {
-			returnError(w, 500)
+			returnError(w, 500, "Something went wrong")
 			return
 		}
 		responseData, _ := json.Marshal(images)
@@ -34,13 +34,13 @@ func Run(imageStore store.ImageStore) {
 
 		imageId, err := strconv.Atoi(ps.ByName("imageId"))
 		if err != nil {
-			returnError(w, 400)
+			returnError(w, 400, "Invalid id param")
 			return
 		}
 		image, err = imageStore.GetImageMetadata(imageId)
 
 		if err != nil {
-			returnError(w, 404)
+			returnError(w, 404, "Could not find image")
 			return
 		}
 		responseData, _ := json.Marshal(image)
@@ -54,7 +54,7 @@ func Run(imageStore store.ImageStore) {
 
 		imageId, err := strconv.Atoi(ps.ByName("imageId"))
 		if err != nil {
-			returnError(w, 400)
+			returnError(w, 400, "Invalid id param")
 			return
 		}
 
@@ -73,7 +73,7 @@ func Run(imageStore store.ImageStore) {
 		}
 
 		if err := imageStore.GetImageData(imageId, &imageData, cutout); err != nil {
-			returnError(w, 404)
+			returnError(w, 404, "Couold not find image")
 			return
 		}
 		w.Header().Set("Content-Type", "text/base64")
@@ -85,14 +85,14 @@ func Run(imageStore store.ImageStore) {
 		imageData, err := io.ReadAll(r.Body)
 
 		if err != nil {
-			returnError(w, 400)
+			returnError(w, 400, "Invalid body.")
 			return
 		}
 
 		meta, err := imageStore.CreateImage(&imageData)
 
 		if err != nil {
-			returnError(w, 400)
+			returnError(w, 400, "Failed to save to db. Make sure it is a base64 encoded image")
 			return
 		}
 		responseData, _ := json.Marshal(meta)
@@ -105,21 +105,20 @@ func Run(imageStore store.ImageStore) {
 		imageData, err := io.ReadAll(r.Body)
 
 		if err != nil {
-			returnError(w, 400)
+			returnError(w, 400, "Invalid body")
 			return
 		}
 
 		imageId, err := strconv.Atoi(ps.ByName("imageId"))
 		if err != nil {
-			returnError(w, 400)
+			returnError(w, 400, "Invalid id param")
 			return
 		}
 
-		meta, _err := imageStore.UpdateImage(imageId, &imageData)
+		meta, err := imageStore.UpdateImage(imageId, &imageData)
 
-		if _err != nil {
-			// Failed to save to db
-			returnError(w, 500)
+		if err != nil {
+			returnError(w, 400, "Failed to save to db. Make sure it is a base64 encoded image")
 			return
 		}
 
@@ -142,7 +141,7 @@ func Run(imageStore store.ImageStore) {
 	log.Fatal(http.ListenAndServe(":8000", router))
 }
 
-func returnError(w http.ResponseWriter, code int) {
+func returnError(w http.ResponseWriter, code int, msg string) {
 	w.WriteHeader(code)
-	w.Write([]byte("Error"))
+	w.Write([]byte(msg))
 }
