@@ -50,8 +50,6 @@ func Run(imageStore store.ImageStore) {
 	}
 
 	getImageData := func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		var imageData []byte
-
 		imageId, err := strconv.Atoi(ps.ByName("imageId"))
 		if err != nil {
 			returnError(w, 400, "Invalid id param")
@@ -73,8 +71,10 @@ func Run(imageStore store.ImageStore) {
 			cutout.H, _ = strconv.Atoi(bbox[3])
 		}
 
-		if err := imageStore.GetImageData(imageId, &imageData, cutout); err != nil {
-			returnError(w, 404, "Couold not find image")
+		imageData, err := imageStore.GetImageData(imageId, cutout)
+
+		if err != nil {
+			returnError(w, 404, "Could not find image")
 			return
 		}
 		w.Header().Set("Content-Type", "text/base64")
@@ -90,7 +90,7 @@ func Run(imageStore store.ImageStore) {
 			return
 		}
 
-		meta, err := imageStore.CreateImage(&imageData)
+		meta, err := imageStore.CreateImage(imageData)
 
 		if err != nil {
 			returnError(w, 400, "Failed to save to db. Make sure it is a base64 encoded image")
@@ -116,7 +116,7 @@ func Run(imageStore store.ImageStore) {
 			return
 		}
 
-		meta, err := imageStore.UpdateImage(imageId, &imageData)
+		meta, err := imageStore.UpdateImage(imageId, imageData)
 
 		if err != nil {
 			returnError(w, 400, "Failed to save to db. Make sure it is a base64 encoded image")

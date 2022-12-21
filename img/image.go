@@ -32,7 +32,7 @@ type Cutout struct {
 	H int
 }
 
-func AnalyzeImageData(data *[]byte) (*Image, error) {
+func AnalyzeImageData(data []byte) (*Image, error) {
 	// Create image.Image instace
 	imageObj, format, err := decodeImageData(data)
 	if err != nil {
@@ -42,7 +42,7 @@ func AnalyzeImageData(data *[]byte) (*Image, error) {
 	// Populate metadata
 	bounds := imageObj.Bounds()
 	imageMetadata := Metadata{
-		Size:       len(*data) / 1024,
+		Size:       len(data) / 1024,
 		Width:      bounds.Dx(),
 		Height:     bounds.Dy(),
 		Format:     format,
@@ -50,12 +50,12 @@ func AnalyzeImageData(data *[]byte) (*Image, error) {
 	}
 
 	return &Image{
-		Data:     string(*data),
+		Data:     string(data),
 		Metadata: imageMetadata,
 	}, nil
 }
 
-func GetImageCutout(data *[]byte, cutout Cutout) ([]byte, error) {
+func GetImageCutout(data []byte, cutout Cutout) ([]byte, error) {
 	// Get original image data
 	originalImage, format, err := decodeImageData(data)
 
@@ -83,7 +83,7 @@ func GetImageCutout(data *[]byte, cutout Cutout) ([]byte, error) {
 
 }
 
-func decodeImageData(data *[]byte) (image.Image, string, error) {
-	reader := base64.NewDecoder(base64.StdEncoding, strings.NewReader(string(*data)))
+func decodeImageData(data []byte) (image.Image, string, error) {
+	reader := base64.NewDecoder(base64.StdEncoding, strings.NewReader(string(data)))
 	return image.Decode(reader)
 }

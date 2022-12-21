@@ -12,11 +12,11 @@ import (
 )
 
 type ImageStore interface {
-	CreateImage(data *[]byte) (img.Image, error)
-	UpdateImage(id int, data *[]byte) (img.Image, error)
+	CreateImage(data []byte) (img.Image, error)
+	UpdateImage(id int, data []byte) (img.Image, error)
 	GetImagesMetadata() ([]img.Image, error)
 	GetImageMetadata(id int) (img.Image, error)
-	GetImageData(id int, _data *[]byte, cutout *img.Cutout) error
+	GetImageData(id int, cutout *img.Cutout) ([]byte, error)
 }
 
 type ImageDatabase struct {
@@ -46,7 +46,7 @@ func Connect() (ImageStore, error) {
 	return &ImageDatabase{db: db}, nil
 }
 
-func (store *ImageDatabase) CreateImage(data *[]byte) (img.Image, error) {
+func (store *ImageDatabase) CreateImage(data []byte) (img.Image, error) {
 
 	image, err := img.AnalyzeImageData(data)
 
@@ -68,7 +68,7 @@ func (store *ImageDatabase) CreateImage(data *[]byte) (img.Image, error) {
 	}, nil
 }
 
-func (store *ImageDatabase) UpdateImage(id int, data *[]byte) (img.Image, error) {
+func (store *ImageDatabase) UpdateImage(id int, data []byte) (img.Image, error) {
 
 	image, err := img.AnalyzeImageData(data)
 
@@ -134,18 +134,19 @@ func (store *ImageDatabase) GetImageMetadata(id int) (img.Image, error) {
 
 	return image, nil
 }
-func (store *ImageDatabase) GetImageData(id int, byteData *[]byte, cutout *img.Cutout) error {
+func (store *ImageDatabase) GetImageData(id int, cutout *img.Cutout) ([]byte, error) {
 	rows, _ := store.db.Query(`SELECT "data" FROM "images" WHERE "id" = $1`, id)
 	defer rows.Close()
 
+	var byteData []byte
 	rows.Next()
-	err := rows.Scan(byteData)
+	err := rows.Scan(&byteData)
 
 	if cutout != nil {
-		*byteData, err = img.GetImageCutout(byteData, *cutout)
+		byteData, err = img.GetImageCutout(byteData, *cutout)
 	}
 
-	return err
+	return byteData, err
 }
 
 func createTable(db *sql.DB) error {
