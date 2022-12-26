@@ -4,6 +4,8 @@ A simple api for storing and retrieving image data. The images gets stored in a 
 with the image data as bytes and some metadata as json. Upload images using base64 encoded string.
 When retrieving image data they will be represented as base64 encoded strings aswell.
 
+For simplicity uses Postgres for storage of both meta data and image data.
+
 ### Endpoints
 
 ​
