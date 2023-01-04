@@ -6,6 +6,8 @@ When retrieving image data they will be represented as base64 encoded strings as
 
 For simplicity uses Postgres for storage of both meta data and image data.
 
+Beware the lack of error handling...
+
 ### Endpoints
 
 ​
